@@ -92,9 +92,13 @@ static void intr_entry(uint id) {
 }
 
 static void proc_yield() {
+  mlfq_reset_level();
   if (curr_status == PROC_RUNNING) {
-    proc_set[curr_proc_idx].cpu_run_time +=
+    ulonglong current_run_time =
         mtime_get() - proc_set[curr_proc_idx].run_start_timestamp;
+
+    proc_set[curr_proc_idx].cpu_run_time += current_run_time;
+    mlfq_update_level(&proc_set[curr_proc_idx], current_run_time);
     proc_set_runnable(curr_pid);
   }
   /* Student's code goes here (Multiple Projects). */
@@ -106,20 +110,22 @@ static void proc_yield() {
    * Do not schedule a process that should still be sleeping at this time. */
 
   int next_idx = MAX_NPROCESS;
+  int best_level = MLFQ_NLEVELS;
   for (uint i = 1; i <= MAX_NPROCESS; i++) {
     struct process *p = &proc_set[(curr_proc_idx + i) % MAX_NPROCESS];
     if (p->status == PROC_PENDING_SYSCALL)
       proc_try_syscall(p);
 
-    if (p->status == PROC_READY || p->status == PROC_RUNNABLE) {
+    if ((p->status == PROC_READY || p->status == PROC_RUNNABLE) &&
+        p->level < best_level) {
+      best_level = p->level;
       next_idx = (curr_proc_idx + i) % MAX_NPROCESS;
-      if (p->status == PROC_READY) {
-        proc_set[next_idx].response_time =
-            mtime_get() - proc_set[next_idx].creation_timestamp;
-      }
-      break;
     }
   }
+
+  if (next_idx < MAX_NPROCESS && proc_set[next_idx].status == PROC_READY)
+    proc_set[next_idx].response_time =
+        mtime_get() - proc_set[next_idx].creation_timestamp;
 
   if (next_idx < MAX_NPROCESS) {
     /* [Preemptive Scheduler]

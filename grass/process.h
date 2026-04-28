@@ -25,11 +25,16 @@ struct process {
   ulonglong run_start_timestamp;
   ulonglong cpu_run_time;
   int timer_interrupt_count;
+  int level;
+  ulonglong mlfq_time_remaining;
   /* Add new fields for lifecycle statistics, MLFQ or process sleep. */
 
   /* Student's code ends here. */
 };
 #define MAX_NPROCESS 16
+#define MLFQ_NLEVELS 5
+#define MLFQ_RESET_PERIOD 10000000
+#define MLFQ_LEVEL_RUNTIME(x) (((x) + 1) * 100000)
 
 ulonglong mtime_get();
 
