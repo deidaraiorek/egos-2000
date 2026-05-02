@@ -63,6 +63,15 @@ static void excp_entry(uint id) {
   /* Student's code goes here (System Call & Protection | Virtual Memory). */
 
   /* Kill the current process if curr_pid is a user application. */
+  if (curr_pid >= GPID_USER_START) {
+    INFO("process %d terminated with exception %d", curr_pid, id);
+    struct proc_request req = {.type = PROC_EXIT};
+    grass->sys_send(GPID_PROCESS, (void *)&req, sizeof(req));
+    proc_free(curr_pid);
+    proc_yield();
+    return;
+  }
+  INFO("excp_entry: id=%d curr_pid=%d", id, curr_pid);
 
   /* Student's code ends here. */
   FATAL("excp_entry: kernel got exception %d", id);
@@ -117,7 +126,7 @@ static void proc_yield() {
       proc_try_syscall(p);
 
     if ((p->status == PROC_READY || p->status == PROC_RUNNABLE) &&
-        p->level < best_level) {
+        p->level < best_level && mtime_get() >= p->wake_time) {
       best_level = p->level;
       next_idx = (curr_proc_idx + i) % MAX_NPROCESS;
     }
@@ -132,6 +141,11 @@ static void proc_yield() {
      * Measure and record lifecycle statistics for the *next* process.
      * [System Call & Protection | Multicore & Locks]
      * Modify mstatus.MPP to enter machine or user mode after mret. */
+    if (proc_set[next_idx].pid < GPID_USER_START) {
+      asm("csrs mstatus, %0" ::"r"(0x1800));
+    } else {
+      asm("csrc mstatus, %0" ::"r"(0x1800));
+    }
 
   } else {
     /* [Multicore & Locks]
@@ -141,7 +155,10 @@ static void proc_yield() {
      * Enable interrupts by setting the mstatus.MIE bit to 1;
      * Wait for the next interrupt using the wfi instruction. */
 
-    FATAL("proc_yield: no process to run on core %d", core_in_kernel);
+    curr_proc_idx = 0;
+    earth->timer_reset(core_in_kernel);
+    asm("csrs mstatus, %0" ::"r"(0x8));
+    asm("wfi");
   }
   /* Student's code ends here. */
 

@@ -27,6 +27,7 @@ struct process {
   int timer_interrupt_count;
   int level;
   ulonglong mlfq_time_remaining;
+  ulonglong wake_time;
   /* Add new fields for lifecycle statistics, MLFQ or process sleep. */
 
   /* Student's code ends here. */

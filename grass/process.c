@@ -36,7 +36,7 @@ int proc_alloc() {
       /* Student's code goes here (Preemptive Scheduler | System Call). */
       proc_set[i].creation_timestamp = mtime_get();
       /* Initialization of lifecycle statistics, MLFQ or process sleep. */
-
+      proc_set[i].wake_time = 0;
       /* Student's code ends here. */
       return curr_pid;
     }
@@ -114,8 +114,9 @@ void mlfq_reset_level() {
 void proc_sleep(int pid, uint usec) {
   /* Student's code goes here (System Call & Protection). */
 
-  /* Update the sleep-related fields in the struct process for process pid. */
-
+  for (uint i = 1; i <= MAX_NPROCESS; i++)
+    if (proc_set[i].pid == pid)
+      proc_set[i].wake_time = mtime_get() + (ulonglong)usec * 10;
   /* Student's code ends here. */
 }
 
